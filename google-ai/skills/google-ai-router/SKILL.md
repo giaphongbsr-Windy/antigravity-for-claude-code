@@ -12,7 +12,7 @@ The user (anh Phong) is on **Google AI Plus**. Each Google service has a differe
 | Task | Tool | Where it works |
 |---|---|---|
 | Answer from the user's own documents with citations; synthesize many sources; generate Audio/Video Overview, slide deck, report, quiz, flashcards, mind map; download artifacts | **NotebookLM via `nlm`** (CLI or its MCP server). Follow the NotebookLM skill that `nlm skill install` set up; run `nlm --help` if no skill is loaded. | Claude Code, Claude Desktop, Cowork |
-| Live web/Google search, deep research, transcribe/understand audio-video-images, second-model code review, bulk scaffolding/tests | **antigravity plugin** — `/antigravity:research`, `/antigravity:media`, `/antigravity:review`, `/antigravity:delegate` (bare `agy-delegate`) | Claude Code in WSL; Claude Code on Windows through `agy-wsl` (below) — not Cowork |
+| Live web/Google search, deep research, transcribe/understand audio-video-images, second-model code review, bulk scaffolding/tests | **antigravity plugin** — `/antigravity:research`, `/antigravity:media`, `/antigravity:review`, `/antigravity:delegate` (bare `agy-delegate`) | Claude Code in WSL; Claude Code on Windows through `agy-wsl` (below); Claude Desktop / Cowork through the `gemini-agy` MCP server (`gemini_ask`, `gemini_doctor`) |
 | Generate video (Veo) or images (Nano Banana) | **Google Flow in the browser** — skill `google-flow` | Anywhere with Claude in Chrome |
 
 If the needed tool is missing (`nlm: command not found`, `agy` exit 13, no browser), say which tool and how to install it rather than substituting a different one silently.
@@ -31,6 +31,10 @@ Rules on Windows:
 - Windows paths mean nothing inside WSL: convert with `wsl.exe -d Ubuntu wslpath -a 'D:\path'` only when agy itself must open the file (e.g. `agy-media`).
 - Web search and URL reads need `--yolo`, which grants agy full access inside WSL. Use it only for read-only research prompts; never with a prompt that asks agy to change files.
 - Translate the stderr signals for the user in plain words (quota spent, needs `agy` login in WSL, timeout) rather than pasting them.
+
+## Gemini from Cowork / Claude Desktop
+
+Cowork's VM cannot run `agy-wsl`; use the `gemini-agy` MCP tools instead (server: `google-ai/mcp/gemini_agy_mcp.py`, registered in `claude_desktop_config.json`). `gemini_ask` takes the whole task as `prompt` — Gemini cannot see the user's files, so paste the needed text in. Set `web_search` only for read-only research. The tool result ends with `AGY_USAGE` / `AGY_SIGNAL` lines and, on failure, an `[exit N: meaning]` line; act on that meaning (quota spent → finish without Gemini).
 
 ## Google AI Plus limits
 
