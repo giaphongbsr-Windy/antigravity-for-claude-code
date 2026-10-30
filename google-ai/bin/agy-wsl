@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# agy-wsl — run an antigravity plugin command (agy-delegate, agy-doctor, agy-media, ...)
+# inside WSL from Claude Code on Windows, where headless agy hangs (upstream issue #6).
+#
+#   agy-wsl agy-doctor
+#   agy-wsl agy-delegate --tier flash "short prompt"
+#   cat notes.md | agy-wsl agy-delegate --tier flash --digest -
+#
+# stdin, stdout, stderr and the exit code pass straight through, so AGY_USAGE /
+# AGY_SIGNAL lines and exit codes (10 quota, 11 auth, ...) mean what they mean in WSL.
+# Env overrides: AGY_WSL_DISTRO (default Ubuntu), AGY_WSL_REPO (default the fork checkout).
+set -u
+
+cmd="${1:-}"
+case "$cmd" in
+  agy-delegate|agy-doctor|agy-media|agy-job|agy-trace|agy-cost-compare) shift ;;
+  *)
+    echo "usage: agy-wsl <agy-delegate|agy-doctor|agy-media|agy-job|agy-trace|agy-cost-compare> [args...]" >&2
+    exit 1
+    ;;
+esac
+
+distro="${AGY_WSL_DISTRO:-Ubuntu}"
+repo="${AGY_WSL_REPO:-~/antigravity-for-claude-code}"
+
+# Git Bash would rewrite /unix/paths in arguments to Windows paths; keep them as-is.
+export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
+
+# --exec skips WSL's own shell (which would expand $1 etc. first). Arguments travel as
+# positional parameters ("$@" inside WSL), never spliced into the script text, so prompts
+# with quotes or $ survive. -i puts ~/.local/bin (agy) on PATH.
+exec wsl.exe -d "$distro" --exec bash -lic 'cmd=$1; shift; cd ~ && exec '"$repo"'/bin/"$cmd" "$@"' agy-wsl "$cmd" "$@"
