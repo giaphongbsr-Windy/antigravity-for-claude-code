@@ -1,0 +1,9 @@
+{
+  "name": "google-ai",
+  "version": "0.1.0",
+  "description": "Route Google AI work from Claude Code and Cowork: NotebookLM (Gemini Notebook) via the nlm CLI, Gemini via the antigravity plugin, and Google Flow (Veo / Nano Banana) via browser automation, with Google AI Plus quota discipline.",
+  "author": {
+    "name": "Dam Gia Phong"
+  },
+  "keywords": ["google", "notebooklm", "gemini-notebook", "flow", "veo", "gemini"]
+}
