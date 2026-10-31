@@ -9,14 +9,24 @@ Standard library only, so it needs no pip install. Register it as:
   "gemini-agy": {"command": "C:\\Python314\\python.exe",
                  "args": ["\\\\wsl.localhost\\Ubuntu\\home\\phongdg\\antigravity-for-claude-code\\google-ai\\mcp\\gemini_agy_mcp.py"]}
 Env overrides: AGY_WSL_DISTRO (default Ubuntu), AGY_WSL_REPO (default ~/antigravity-for-claude-code).
+
+Cowork abandons a tool call after ~60 s while Gemini research takes minutes, so every call
+runs as a background job: gemini_ask waits up to WAIT_S and then hands back a job id, and
+gemini_result collects it. Finished results are also saved under %LOCALAPPDATA%\\gemini-agy.
 """
 
 import json
 import os
 import subprocess
 import sys
+import threading
+import time
+import uuid
 
-SERVER = {"name": "gemini-agy", "version": "0.3.0"}
+SERVER = {"name": "gemini-agy", "version": "0.4.0"}
+WAIT_S = 40  # stay under Cowork's ~60 s per-call limit
+JOB_DIR = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "gemini-agy", "jobs")
+JOBS = {}  # job id -> {"done": Event, "text": str, "is_error": bool, "started": float}
 DISTRO = os.environ.get("AGY_WSL_DISTRO", "Ubuntu")
 REPO = os.environ.get("AGY_WSL_REPO", "~/antigravity-for-claude-code")
 
@@ -47,7 +57,10 @@ TOOLS = [
             "Use for a second opinion from another model, Google/web search research, or bulky reading "
             "you want summarised outside Claude's context. Put all needed content IN the prompt: Gemini "
             "cannot see the user's files. Prefer NotebookLM for questions about the user's own documents. "
-            "Gemini output is a claim: verify load-bearing facts before presenting them."
+            "Gemini output is a claim: verify load-bearing facts before presenting them. "
+            "Waits about 40 s; if Gemini is not done it returns a job id - then call gemini_result "
+            "with it (repeat until finished; web research usually takes 1-5 minutes). "
+            "Do not call gemini_ask again for the same question while its job is running."
         ),
         "inputSchema": {
             "type": "object",
@@ -63,6 +76,15 @@ TOOLS = [
                 "timeout_minutes": {"type": "integer", "minimum": 1, "maximum": 20, "default": 9},
             },
             "required": ["prompt"],
+        },
+    },
+    {
+        "name": "gemini_result",
+        "description": "Get the answer of a gemini_ask job. Waits about 40 s; if still running, call it again.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"job_id": {"type": "string", "description": "The id returned by gemini_ask."}},
+            "required": ["job_id"],
         },
     },
     {
@@ -100,10 +122,52 @@ def summarise(rc, out, err):
     return "\n".join(parts)
 
 
+def start_job(work):
+    """Run work() -> (text, is_error) on a thread; return the job id."""
+    jid = uuid.uuid4().hex[:8]
+    job = {"done": threading.Event(), "text": "", "is_error": False, "started": time.time()}
+    JOBS[jid] = job
+
+    def runner():
+        try:
+            job["text"], job["is_error"] = work()
+        except Exception as e:
+            job["text"], job["is_error"] = "gemini-agy error: %s" % e, True
+        try:
+            os.makedirs(JOB_DIR, exist_ok=True)
+            with open(os.path.join(JOB_DIR, jid + ".txt"), "w", encoding="utf-8") as f:
+                f.write(job["text"])
+        except OSError:
+            pass
+        job["done"].set()
+
+    threading.Thread(target=runner, daemon=True).start()
+    return jid
+
+
+def wait_job(jid):
+    job = JOBS.get(jid)
+    if job is None:
+        saved = os.path.join(JOB_DIR, jid + ".txt")
+        if os.path.exists(saved):  # finished before a server restart
+            with open(saved, encoding="utf-8") as f:
+                return f.read(), False
+        return "unknown job id %s (the server may have restarted while it ran; ask again)" % jid, True
+    if job["done"].wait(WAIT_S):
+        JOBS.pop(jid, None)
+        return job["text"], job["is_error"]
+    return ("[job %s still running after %d s] Gemini has not finished yet. Call gemini_result with "
+            "job_id=\"%s\" again." % (jid, int(time.time() - job["started"]), jid)), False
+
+
 def call_tool(name, a):
     if name == "gemini_doctor":
-        rc, out, err = run_wsl("agy-doctor", [], "", 180)
-        return summarise(rc, out, err), rc != 0
+        def doctor():
+            rc, out, err = run_wsl("agy-doctor", [], "", 180)
+            return summarise(rc, out, err), rc != 0
+        return wait_job(start_job(doctor))
+    if name == "gemini_result":
+        return wait_job((a.get("job_id") or "").strip())
     if name != "gemini_ask":
         raise ValueError("unknown tool: %s" % name)
     prompt = (a.get("prompt") or "").strip()
@@ -120,8 +184,10 @@ def call_tool(name, a):
         args.append("--yolo")
     else:
         prompt += NO_TOOLS
-    rc, out, err = run_wsl("agy-delegate", args + ["-"], prompt, minutes * 60 + 90)
-    return summarise(rc, out, err), rc != 0
+    def work():
+        rc, out, err = run_wsl("agy-delegate", args + ["-"], prompt, minutes * 60 + 90)
+        return summarise(rc, out, err), rc != 0
+    return wait_job(start_job(work))
 
 
 def send(msg):

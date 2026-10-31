@@ -34,7 +34,7 @@ Rules on Windows:
 
 ## Gemini from Cowork / Claude Desktop
 
-Cowork's VM cannot run `agy-wsl`; use the `gemini-agy` MCP tools instead (server: `google-ai/mcp/gemini_agy_mcp.py`, registered in `claude_desktop_config.json`). `gemini_ask` takes the whole task as `prompt` — Gemini cannot see the user's files, so paste the needed text in. Set `web_search` only for read-only research. The tool result ends with `AGY_USAGE` / `AGY_SIGNAL` lines and, on failure, an `[exit N: meaning]` line; act on that meaning (quota spent → finish without Gemini).
+Cowork's VM cannot run `agy-wsl`; use the `gemini-agy` MCP tools instead (server: `google-ai/mcp/gemini_agy_mcp.py`, registered in `claude_desktop_config.json`). `gemini_ask` takes the whole task as `prompt` — Gemini cannot see the user's files, so paste the needed text in. Set `web_search` only for read-only research. Cowork drops a tool call after ~60 s, so `gemini_ask` returns `[job <id> still running ...]` when Gemini needs longer: keep calling `gemini_result` with that id until the answer arrives (web research takes 1–5 min), and tell the user it is still running instead of re-asking. The final result ends with `AGY_USAGE` / `AGY_SIGNAL` lines and, on failure, an `[exit N: meaning]` line; act on that meaning (quota spent → finish without Gemini).
 
 ## Google AI Plus limits
 
