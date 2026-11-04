@@ -1,23 +1,26 @@
 ---
 name: google-flow
-description: Generate video (Veo) or images (Nano Banana) in Google Flow through browser automation, on a Google AI Plus credit budget (~200 credits/month). Use when the user asks to create, regenerate, or download a Flow video/image or scene. For the full render → export → concat → QA pipeline, also use the google-flow-video-production-qa skill if it is available.
+description: Generate video (Veo) or images (Nano Banana) in Google Flow through browser automation, on a limited Google AI Plus credit budget. Use when the user asks to create, regenerate, or download a Flow video/image or scene. For the full render → export → concat → QA pipeline, also use the google-flow-video-production-qa skill if it is available.
 ---
 
 # Google Flow (browser, credit-limited)
 
-Flow has no public API; this drives the Flow web app with Claude in Chrome in the user's own signed-in browser. Google AI Plus gives roughly **200 Flow credits per month**, so every generation is a spending decision.
+Flow has no public API; this drives the Flow web app (`https://flow.google.com`) with Claude in Chrome in the user's own signed-in browser. Credits are limited, so every generation is a spending decision. Measured 2026-11-04: balance 250, shown in the account avatar menu with its reset date (22 Nov).
 
 ## Credit gate — before each generation
 
-1. Read the current credit balance shown in Flow (if visible) and the cost Flow's approval card shows.
-2. Tell the user: model, number of outputs, expected credit cost, balance after. Wait for an explicit yes.
-3. On approval click **Approve** — never **Always approve**.
-4. Prefer a cheap test first: an image or the lowest-cost video model to validate the prompt before a full-quality video.
-5. Log each spend (date, scene, model, credits) in the project's log file so the monthly budget is trackable.
+**The gate is your question to the user, and it comes before you click Start generation.** Flow is not the gate: on 2026-11-04, with Agent settings → Confirm before generating on **Always**, a Nano Banana 2 Lite image generated straight away with no approval card. It cost 0 credits, which may be why no card showed; whether paid models show one is unverified.
+
+1. Read the balance from the avatar menu.
+2. Tell the user: model, number of outputs, expected cost, balance after. If the cost is unknown, say "cost unknown" and do not guess. Wait for an explicit yes.
+3. Only then send the prompt. If an approval card appears, click **Approve** — never **Always approve** — and only if its cost matches what the user agreed; otherwise stop and ask.
+4. Keep Confirm before generating on **Always**; never switch it to Never.
+5. Prefer a cheap test first: Nano Banana 2 Lite at x1 in Agent settings (the `Settings` button in the composer; Save afterwards), or the lowest-cost video model, before a full-quality video.
+6. Re-read the balance afterwards and log the real spend (date, scene, model, credits) in the project's log file, so the budget is trackable.
 
 ## Automation rules that are known to matter
 
-These come from the user's production playbook (`google-flow-video-production-qa`); when that skill is available, read it for the details and code.
+These come from the user's production playbook (`google-flow-video-production-qa`); when that skill is available, read it for the details and code. Flow's UI has since moved to an agent chat panel (a new project opens a "What's new" dialog first; dismiss **Get started**), and only the composer and `Start generation` steps were re-checked on 2026-11-04, so confirm the others against the live page.
 
 - Select elements by `aria-label`/text and call `.click()` via JS; do not click by screenshot coordinates on the Flow page (scaled coordinates miss).
 - Fill the prompt with `execCommand('insertText')` on the `[contenteditable].ProseMirror` composer, wait ~1s, then click `button[aria-label="Start generation"]`.
