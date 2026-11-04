@@ -39,7 +39,7 @@ Cowork's VM cannot run `agy-wsl`; use the `gemini-agy` MCP tools instead (server
 ## Google AI Plus limits
 
 - **agy:** limited, weekly refresh, no top-up. Delegate only above the break-even; default tier `flash`. Exit 10 (`QUOTA_EXHAUSTED`) → do the work on Claude and tell the user the weekly agy quota is spent; don't retry in a loop.
-- **Flow:** ~200 credits/month. Before every generation, state the model and expected credit cost and wait for the user's yes.
+- **Flow:** limited credits (250 on 2026-11-04). Before sending any generation, state the model and expected credit cost and wait for the user's yes; Flow itself may not ask.
 - **NotebookLM:** the most generous of the three → prefer it for reading and summarizing documents over spending agy quota.
 
 ## Ask first
