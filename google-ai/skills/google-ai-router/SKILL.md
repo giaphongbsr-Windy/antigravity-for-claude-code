@@ -7,6 +7,10 @@ description: Pick the right Google AI tool for a task and apply Google AI Plus q
 
 The user (anh Phong) is on **Google AI Plus**. Each Google service has a different cost profile on that plan, so route by task, not by habit.
 
+## Paused: Gemini through agy
+
+The user paused this route on 2026-11-06 because of Google ban risk and slow replies. While `~/.config/google-ai/agy-paused` exists in WSL, `agy-wsl` and `gemini_ask` stop with exit 16 before reaching agy. Do not call them, do not bypass the pause, and do not offer agy as an option: do the work with Claude, or NotebookLM for documents. Only the user lifts the pause.
+
 ## Routing
 
 | Task | Tool | Where it works |
