@@ -23,7 +23,7 @@ import threading
 import time
 import uuid
 
-SERVER = {"name": "gemini-agy", "version": "0.4.0"}
+SERVER = {"name": "gemini-agy", "version": "0.4.3"}
 WAIT_S = 40  # stay under Cowork's ~60 s per-call limit
 JOB_DIR = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "gemini-agy", "jobs")
 JOBS = {}  # job id -> {"done": Event, "text": str, "is_error": bool, "started": float}
@@ -32,7 +32,7 @@ REPO = os.environ.get("AGY_WSL_REPO", "~/antigravity-for-claude-code")
 
 # Arguments arrive in WSL as positional parameters, never spliced into the script text.
 # --exec skips WSL's own shell; -i puts ~/.local/bin (agy) on PATH.
-WSL_SCRIPT = 'repo=$1; cmd=$2; shift 2; cd ~ && exec "${repo/#\\~/$HOME}/bin/$cmd" "$@"'
+WSL_SCRIPT = 'if [ -e ~/.config/google-ai/agy-paused ]; then exit 16; fi; repo=$1; cmd=$2; shift 2; cd ~ && exec "${repo/#\\~/$HOME}/bin/$cmd" "$@"'
 
 EXIT_MEANING = {
     1: "usage error in the call",
@@ -44,6 +44,7 @@ EXIT_MEANING = {
     13: "agy is not installed in WSL",
     14: "the model for this tier is not available on the user's plan",
     15: "Gemini asked for a tool permission it was not given; put the content in the prompt, or set web_search for research",
+    16: "the user paused Gemini through agy (~/.config/google-ai/agy-paused in WSL); do the work without Gemini and do not retry",
 }
 
 NO_TOOLS = ("\n\n(Answer only from the content in this prompt. Do not run commands, "

@@ -8,6 +8,7 @@
 #
 # stdin, stdout, stderr and the exit code pass straight through, so AGY_USAGE /
 # AGY_SIGNAL lines and exit codes (10 quota, 11 auth, ...) mean what they mean in WSL.
+# Exit 16 = paused: ~/.config/google-ai/agy-paused exists in WSL, so agy is not reached.
 # Env overrides: AGY_WSL_DISTRO (default Ubuntu), AGY_WSL_REPO (default the fork checkout).
 set -u
 
@@ -29,4 +30,4 @@ export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
 # --exec skips WSL's own shell (which would expand $1 etc. first). Arguments travel as
 # positional parameters ("$@" inside WSL), never spliced into the script text, so prompts
 # with quotes or $ survive. -i puts ~/.local/bin (agy) on PATH.
-exec wsl.exe -d "$distro" --exec bash -lic 'cmd=$1; shift; cd ~ && exec '"$repo"'/bin/"$cmd" "$@"' agy-wsl "$cmd" "$@"
+exec wsl.exe -d "$distro" --exec bash -lic 'cmd=$1; shift; if [ -e ~/.config/google-ai/agy-paused ]; then echo "agy-wsl: Gemini through agy is paused by the user (~/.config/google-ai/agy-paused)" >&2; exit 16; fi; cd ~ && exec '"$repo"'/bin/"$cmd" "$@"' agy-wsl "$cmd" "$@"
